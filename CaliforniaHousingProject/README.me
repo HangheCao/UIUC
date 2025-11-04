@@ -1,130 +1,136 @@
-🌍 Predicting Banking Crises in Africa
+🏠 Geospatial Analysis of California’s Housing Market
 
-A Machine Learning Approach to Early Warning Systems for Financial Instability
+A Spatial Modeling Approach Using the 1990 U.S. Census Data
 
 📘 Overview
 
-This project explores the use of machine learning models to predict the likelihood of banking crises in 13 African countries between 1970 and 2018. Using historical macroeconomic indicators — such as inflation, exchange rates, and systemic crisis markers — we aim to identify early warning signals that could help policymakers prevent or mitigate financial instability.
+This project investigates the spatial patterns and drivers of housing prices across California using data from the 1990 U.S. Census. By combining geospatial visualization and spatial econometric methods, it explores how geography, demographics, and economic indicators — such as coastal proximity, housing age, and income levels — interact to shape regional disparities in real estate values.
 
-The study compares six models, including both classical statistical and modern ensemble methods, to determine which best captures the dynamics of crisis prediction. Despite their simplicity, Logistic Regression models proved most effective, achieving the highest recall rate and demonstrating that interpretable models can perform robustly in complex economic contexts
+The project provides a comprehensive example of how spatial dependence and heterogeneity influence housing markets and offers insights into California’s longstanding housing affordability challenges
 
-Project II Report
+STAT545_Project_Andrew
 
 .
 
 🎯 Objectives
 
-Forecast the occurrence of banking crises using macroeconomic and financial indicators.
+Detect spatial clustering of housing values using Moran’s I to determine whether high or low-value areas are geographically concentrated.
 
-Identify the key drivers (e.g., inflation, systemic crises, lagged financial shocks) behind crisis events.
+Identify spatial inequities via hotspot/coldspot analysis, highlighting statistically significant clusters of high or low housing values.
 
-Evaluate model performance with an emphasis on recall, prioritizing the detection of real crises even at the expense of false positives.
+Model regional variations in housing drivers using Geographically Weighted Regression (GWR) to understand how predictors like median income and ocean proximity vary spatially.
 
-Build a foundation for early warning systems that support proactive financial policy in developing economies.
+Visualize housing value distributions through Kernel Density Estimation (KDE) maps to reveal hidden spatial trends around urban and coastal zones.
 
 🧮 Dataset
 
-Source: Africa Economic, Banking, and Systemic Crisis Data (Kaggle)
+Source: California Housing Prices – Kaggle
 
-Collected by: Carmen Reinhart, Harvard Kennedy School
+Collected by: U.S. Census Bureau (1990)
 
-Coverage: 13 African countries, 1970–2018
+Observations: 20,640 census tracts
 
-Observation type: Annual macroeconomic indicators
+Variables: 10
+
+Spatial Coverage: Entire state of California
 
 🔑 Key Variables
 Variable	Description
-systemic_crisis	Whether a systemic financial crisis occurred
-inflation_annual_cpi	Annual inflation rate (CPI)
-currency_crises	Presence of a currency crisis
-domestic_debt_in_default	Sovereign domestic debt default indicator
-exch_usd	Exchange rate relative to USD
-banking_crisis	Target variable (“crisis” or “no_crisis”)
-*_lag1	Lagged versions of selected features to capture temporal effects
+longitude, latitude	Geographic coordinates of census tracts
+housing_median_age	Median age of houses (years)
+total_rooms, total_bedrooms	Housing stock characteristics
+population, households	Demographic measures
+median_income	Median household income (scaled, unit = $10,000)
+median_house_value	Median house value (USD)
+ocean_proximity	Categorical proximity to the coast (5 levels)
 ⚙️ Methodology
-🧩 Data Preprocessing
+🗺️ Spatial Techniques Used
+Technique	Purpose
+Moran’s I	Tests for spatial autocorrelation — whether similar house values cluster geographically
+Hotspot/Coldspot Analysis (Getis-Ord Gi)*	Identifies statistically significant spatial clusters
+Geographically Weighted Regression (GWR)	Examines how relationships between predictors and housing prices vary across space
+Kernel Density Estimation (KDE)	Visualizes housing value density to uncover spatial concentration
+🧰 Tools & Packages
 
-Removed extremely imbalanced variables (e.g., domestic debt defaults).
+This analysis was implemented in R using the following packages:
 
-Created lagged variables (banking_crisis_lag1, inflation_crises_lag1, etc.) to reflect past-year effects.
+Package	Function
+sf	Spatial feature handling
+tigris	Accessing U.S. Census shapefiles
+ggplot2	Data visualization
+spdep	Spatial weights and autocorrelation analysis
+GWmodel	Geographically Weighted Regression
+dplyr, tidyr	Data manipulation
+📊 Data Description
 
-Chronological split (80/20) by country to prevent data leakage.
+The dataset captures a snapshot of California’s housing market in 1990, a period marking early signals of the state’s modern housing divide.
 
-Applied feature normalization for scale-sensitive models.
+Coastal regions (e.g., Bay Area, Los Angeles) already exhibited higher median house values due to environmental and economic advantages.
 
-Addressed class imbalance using class_weight='balanced' rather than oversampling.
+Inland regions (e.g., Central Valley, inland deserts) tended to have lower income and house values, reflecting emerging affordability gaps.
 
-🧠 Models Compared
-Model	Key Technique
-Logistic Regression	Baseline interpretable classifier
-Logistic Regression (ElasticNet)	L1 + L2 regularization for feature selection
-Support Vector Classifier (SVC)	Linear kernel, class-weighted
-K-Nearest Neighbors (KNN)	Distance-based voting
-Gradient Boosting Machine (GBM)	Sequential ensemble with tuned learning rate
-Random Forest	Bagging ensemble, feature importance analysis
-🧾 Evaluation Metrics
+Spatial heterogeneity — variation in relationships across regions — is a key finding, indicating that housing price drivers differ spatially and cannot be explained by a single global model.
 
-Accuracy
+📈 Key Findings
 
-F1 Score
+Strong Spatial Clustering:
+Moran’s I confirmed statistically significant clustering of housing values — high-value neighborhoods are geographically close to one another, forming clear coastal “hot zones.”
 
-ROC-AUC
+Regional Inequity Patterns:
+Hotspot analysis revealed high-value concentrations along the Pacific Coast, particularly near San Francisco, Los Angeles, and San Diego, while coldspots dominate inland and rural areas.
 
-Recall (Primary Metric) — chosen to minimize false negatives, as missing a true crisis is far costlier than a false alarm.
+Spatial Non-Stationarity:
+GWR results showed that the impact of median income on house value varies — it’s strongest in high-cost coastal areas and weaker inland, suggesting region-specific market dynamics.
 
-📊 Results
-Model	Accuracy	Recall	F1	ROC-AUC
-Logistic Regression	0.967	0.885	0.868	0.990
-Logistic Regression (ElasticNet)	0.958	0.846	0.830	0.988
-SVC	0.958	0.769	0.816	0.956
-KNN	0.972	0.769	0.870	0.945
-Gradient Boosting	0.972	0.769	0.870	0.978
-Random Forest	0.963	0.769	0.833	0.991
+Visualization Insights:
+KDE maps effectively visualized housing value density, highlighting urban clustering and terrain-related constraints (e.g., mountainous or desert regions).
 
-🏆 Logistic Regression achieved the best recall (88%), showing that simple and interpretable models can outperform more complex algorithms when key economic variables are selected effectively.
+🏗️ Workflow
+# Example R Workflow
+library(sf)
+library(ggplot2)
+library(spdep)
+library(GWmodel)
 
-🔍 Key Insights
+# Load Data
+housing <- read.csv("california_housing.csv")
 
-Inflation, systemic crises, and previous-year banking crises are the strongest predictors of future crises.
+# Convert to Spatial Object
+housing_sf <- st_as_sf(housing, coords = c("longitude", "latitude"), crs = 4326)
 
-High inflation and prior systemic instability serve as early warning signals for financial distress.
+# Moran’s I Test
+nb <- poly2nb(housing_sf)
+lw <- nb2listw(nb)
+moran.test(housing_sf$median_house_value, lw)
 
-Model simplicity supports interpretability, making results more actionable for policymakers.
+# GWR Example
+gwr_model <- gwr.basic(median_house_value ~ median_income + housing_median_age, data = housing_sf)
 
-Country-level heterogeneity remains significant — future work may benefit from country-specific modeling.
+💡 Policy Implications
 
-🚀 Future Work
+This study underscores that housing market inequalities in California are spatially structured, not random.
+Understanding these patterns is crucial for:
 
-Add additional predictors such as GDP growth, foreign reserves, and governance quality.
+Designing region-specific housing affordability policies,
 
-Explore time-series deep learning models (e.g., LSTM, GRU) and Hidden Markov Models to capture temporal patterns.
+Guiding urban growth and zoning decisions, and
 
-Incorporate SHAP value analysis for explainable AI and feature attribution.
+Anticipating the impacts of climate change and gentrification on vulnerable inland communities.
 
-Evaluate regional transferability — whether a model trained on some countries generalizes to others.
+🚀 Future Directions
 
-🧰 Tools & Libraries
+Extend analysis to 2000 and 2020 census data to explore temporal evolution of housing inequity.
 
-Python: pandas, numpy, scikit-learn, matplotlib, seaborn
+Incorporate climate risk variables (e.g., wildfire exposure, flood zones).
 
-Statistical Techniques: Logistic Regression, ElasticNet, Ensemble Trees
+Use spatiotemporal models (e.g., Bayesian spatial regression, spatial panel models) for longitudinal trends.
 
-Feature Selection: Recursive Feature Elimination (RFE)
+Develop a web-based interactive map using R Shiny or Leaflet.
 
-Hyperparameter Tuning: GridSearchCV
+📚 References
 
-📈 Contributors
-Name	Role	Contributions
-Saniya Abushakimova	Abstract, Data Preprocessing, Logistic Models, Evaluation	
-Jaehyung Kim	Introduction, Gradient Boosting, Random Forest, Results	
-Andrew Cao	Exploratory Data Analysis, SVC, KNN, Discussion	
-📚 Reference
+U.S. Census Bureau (1990). Census of Population and Housing. Source
 
-Reinhart, C. M. (Harvard Kennedy School). Global Financial Crisis Data. Source
+Géron, A. (2017). California Housing Prices Dataset. Kaggle
 
-Kaggle Dataset: Africa Economic, Banking, and Systemic Crisis Data
-
-🏁 Summary
-
-This study demonstrates that macroeconomic instability — particularly inflation and systemic crises — strongly correlates with banking crises.
-Simple, well-calibrated models such as Logistic Regression can serve as effective and interpretable early warning systems, providing valuable insights for policymakers seeking to strengthen financial stability in emerging economies.
+👨‍💻 Author
