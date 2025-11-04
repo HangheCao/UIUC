@@ -1,0 +1,306 @@
+---
+title: "housingData"
+output: html_document
+date: "2025-03-17"
+---
+
+
+```{r}
+library(readr)
+housing <- read_csv("D:/uiuc/STAT545/housing.csv")
+
+```
+
+
+```{r}
+head(housing)
+```
+
+```{r}
+str(housing)
+```
+```{r}
+class(housing$ocean_proximity)
+#> [1] "character"
+
+typeof(housing$ocean_proximity)
+#> [1] "character"
+
+```
+
+```{r}
+# Install required packages
+#install.packages(c("sf", "tigris", "ggplot2"))
+
+# Load libraries
+library(sf)
+library(tigris)
+library(ggplot2)
+library(dplyr)
+library(spdep)
+library(leaflet)
+
+```
+```{r}
+colnames(housing)  # Replace with your dataframe name
+
+# Check coordinate ranges (California typical values)
+summary(housing$longitude)  # Should be ~[-124.5, -114]
+summary(housing$latitude) 
+```
+```{r}
+clean_data <- housing %>%
+  filter(
+    !is.na(longitude),
+    !is.na(latitude),
+    longitude >= -125 & longitude <= -114,
+    latitude >= 32 & latitude <= 42
+  ) %>%
+  mutate(
+    longitude = as.numeric(longitude),
+    latitude = as.numeric(latitude)
+  )
+
+# Convert to sf
+housing_sf <- st_as_sf(clean_data, coords = c("longitude", "latitude"), crs = 4326)
+
+# Verify
+plot(housing_sf$geometry, pch = 19, cex = 0.3)
+```
+
+
+
+```{r}
+california_map <- map_data("state", region = "california")
+ggplot() +
+    geom_polygon(data = california_map, aes(x = long, y = lat, group = group),
+                 fill = "gray90", color = "black") +
+    geom_sf(data= housing_sf, fill = "red", color = "black", alpha = 0.2) +
+    labs(title = "Housing Distribution in California") +
+    theme_minimal()
+```
+```{r}
+# Project to a planar coordinate system (optional but often better for distance)
+housing_sf <- st_transform(housing_sf, 3857)
+
+# Create neighbors list using k-nearest neighbors (k = 5 is typical)
+coords <- st_coordinates(housing_sf)
+knn <- knearneigh(coords, k = 5)
+nb <- knn2nb(knn)
+listw <- nb2listw(nb, style = "W")
+moran.test(housing$median_house_value, listw)
+
+```
+Our Moran I statistics values is 0.8208. This is a high positive values, suggesting that areas with similar median house values are clustered together (i.e., high values near high values, and low near low). Values close to +1 indicate strong spatial autocorrelation.
+Expectation value is -0.000048 What Moran's I would be if value were spatially random. This is near 9, as expected
+Variance 1.6748e-05; variance of the test statistics under the null hypothesis (randomness).
+Standard deviate (Z) 200.57. This is a very large Z-score -> Moran's I is way off from what would be expected under randomness.
+p-values is less than 2.2 e-16, which is highly significant, rejecting the null hypothesis of spatial randomness. 
+Median house values in our dataset are not randomly distributed -- instead, they show very strong clustering. This could reflect urban centers with high property values vs. rural or inland areas with lower values. 
+
+
+
+```{r}
+library(sf)
+library(spdep)
+library(tmap)   # For nicer mapping (optional but recommended)
+
+```
+```{r}
+local_moran <- localmoran(housing$median_house_value, listw)
+housing_sf$Ii <- local_moran[, "Ii"]        # Local Moran's I statistic
+housing_sf$Z_Ii <- local_moran[, "Z.Ii"]    # Z-score
+housing_sf$pval <- local_moran[, "Pr(z != E(Ii))"]  # p-value
+
+```
+## Local Moran's I Cluster Types (LISA)
+
+| **Category** | **Interpretation** |
+|--------------|--------------------|
+| **High-High** | A location with **high** values (e.g., high median house value) **surrounded by neighbors also with high values**. → *Hotspot* (e.g., wealthy coastal areas like San Francisco or LA suburbs). |
+| **Low-Low** | A location with **low** values **surrounded by low values**. → *Coldspot* (e.g., rural inland areas with low house prices). |
+| **High-Low** | A **high** value **surrounded by low values**. → *Spatial outlier*, potentially an affluent neighborhood in a low-income area. |
+| **Low-High** | A **low** value **surrounded by high values**. → *Another type of spatial outlier*, possibly an underdeveloped area within a wealthy region. |
+
+```{r}
+housing_sf$cluster <- NA
+housing_sf$cluster[housing_sf$Ii > 0 & housing_sf$median_house_value > mean(housing$median_house_value)] <- "High-High"
+housing_sf$cluster[housing_sf$Ii > 0 & housing_sf$median_house_value < mean(housing$median_house_value)] <- "Low-Low"
+housing_sf$cluster[housing_sf$Ii < 0 & housing_sf$median_house_value > mean(housing$median_house_value)] <- "High-Low"
+housing_sf$cluster[housing_sf$Ii < 0 & housing_sf$median_house_value < mean(housing$median_house_value)] <- "Low-High"
+
+```
+
+```{r}
+tmap_mode("view")  # use "plot" for static map
+tm_shape(housing_sf) +
+  tm_dots(col = "cluster", palette = "Set1", size = 0.5, alpha = 0.8, title = "LISA Cluster") +
+  tm_layout(title = "Local Moran's I Clusters of Median House Value")
+
+```
+```{r}
+# Keep only significant results (e.g., p < 0.05)
+housing_sf$sig_cluster <- NA
+
+sig_idx <- housing_sf$pval < 0.05  # Boolean index
+
+housing_sf$sig_cluster[sig_idx & housing_sf$Ii > 0 & housing_sf$median_house_value > mean(housing$median_house_value)] <- "High-High"
+housing_sf$sig_cluster[sig_idx & housing_sf$Ii > 0 & housing_sf$median_house_value < mean(housing$median_house_value)] <- "Low-Low"
+housing_sf$sig_cluster[sig_idx & housing_sf$Ii < 0 & housing_sf$median_house_value > mean(housing$median_house_value)] <- "High-Low"
+housing_sf$sig_cluster[sig_idx & housing_sf$Ii < 0 & housing_sf$median_house_value < mean(housing$median_house_value)] <- "Low-High"
+
+```
+
+
+```{r}
+library(tmap)
+tmap_mode("view")  # or use "plot" for a static version
+
+tm_shape(housing_sf[!is.na(housing_sf$sig_cluster), ]) +
+  tm_dots(col = "sig_cluster", palette = "Set1", size = 0.3, title = "Significant LISA Clusters") +
+  tm_layout(title = "Significant Local Moran's I Clusters (p < 0.05)")
+
+
+```
+Only points that are statistically significant at the 5% level will be shown:
+
+Red clusters → high-value housing areas clustered together
+
+Blue clusters → low-value areas clustered together
+
+Pink/Green outliers → anomalies worth investigating
+
+
+```{r}
+library(GWmodel)
+
+```
+```{r}
+housing_gwr <- st_transform(housing_sf, crs = 3857)  # necessary for distance calculations
+# Convert to Spatial* object (older format used by GWmodel)
+housing_sp <- as(housing_gwr, "Spatial")
+
+```
+
+```{r}
+
+housing_sp$ocean_dummy <- as.numeric(housing_sp$ocean_proximity == "NEAR OCEAN")
+bw <- bw.gwr(
+  formula = median_house_value ~ median_income + ocean_dummy,
+  data = housing_sp,
+  approach = "AICc",  # Akaike Information Criterion, corrected
+  kernel = "bisquare", 
+  adaptive = TRUE
+)
+gwr_result <- gwr.basic(
+  formula = median_house_value ~ median_income + ocean_dummy,
+  data = housing_sp,
+  bw = bw,
+  kernel = "bisquare",
+  adaptive = TRUE
+)
+
+```
+
+
+```{r}
+coefs_df <- as.data.frame( gwr_result$SDF@data )[ , c("Intercept","median_income","ocean_dummy") ]
+
+# 3. Peek at the first few local equations
+head(coefs_df)
+```
+```{r}
+i     <- 100
+b0    <- coefs_df$Intercept[i]
+b_inc <- coefs_df$median_income[i]
+b_oc  <- coefs_df$ocean_dummy[i]
+cat(sprintf(
+  "Tract %d: ŷ = %.2f + %.4f·income + %.4f·ocean_dummy\n",
+  i, b0, b_inc, b_oc
+))
+
+```
+
+```{r}
+# Convert results to an sf object
+gwr_sf <- st_as_sf(gwr_result$SDF)
+
+# Visualize how median_income's coefficient varies
+library(tmap)
+tmap_mode("view")
+tm_shape(gwr_sf) +
+  tm_dots(col = "median_income", style = "quantile", palette = "RdBu", midpoint = NA,
+          title = "GWR Coefficient for Median Income") +
+  tm_layout(title = "Spatial Variation in Income Effect on House Value")
+
+```
+Our GWR results reveal that while median income is a strong predictor of housing prices in major metropolitan regions like Los Angeles and San Francisco, its effect weakens or even becomes negligible in rural or inland areas, suggesting regional variation in the drivers of housing markets.
+
+
+
+```{r}
+library(sf)
+library(spatstat)
+library(ggplot2)
+```
+```{r}
+# Transform to projected CRS if needed
+housing_kde <- st_transform(housing_sf, crs = 3857)
+
+# Get bounding box window
+bbox <- st_bbox(housing_kde)
+win <- owin(
+  xrange = c(bbox["xmin"], bbox["xmax"]),
+  yrange = c(bbox["ymin"], bbox["ymax"])
+)
+
+# Create point pattern (ppp object)
+coords <- st_coordinates(housing_kde)
+housing_ppp <- ppp(x = coords[,1], y = coords[,2], window = win)
+
+```
+```{r}
+# Perform KDE
+kde_result <- density.ppp(housing_ppp, sigma = 20000)  # 20 km bandwidth; adjust if needed
+plot(kde_result, main = "KDE of Housing Locations in California")
+
+```
+```{r}
+install.packages("rnaturalearthhires", repos = "https://ropensci.r-universe.dev")
+install.packages("rnaturalearth")
+install.packages("sf")
+```
+
+
+```{r}
+library(rnaturalearth)
+library(sf)
+library(rnaturalearthhires) 
+# Get US states and extract California
+us_states <- ne_states(country = "United States of America ", returnclass = "sf")
+california <- us_states[us_states$name == "California", ]
+
+# Reproject to match KDE (EPSG:3857)
+california_proj <- st_transform(california, crs = 3857)
+
+library(raster)
+
+# Convert spatstat image to raster
+kde_raster <- raster(kde_result)
+
+# Convert to data frame for ggplot
+kde_df <- as.data.frame(kde_raster, xy = TRUE)
+names(kde_df)[3] <- "density"
+library(ggplot2)
+
+ggplot() +
+  geom_raster(data = kde_df, aes(x = x, y = y, fill = density)) +
+  scale_fill_viridis_c(option = "magma", name = "Density") +
+  geom_sf(data = california_proj, fill = NA, color = "white", size = 0.5) +
+  coord_sf(crs = st_crs(california_proj)) +
+  labs(title = "KDE of Housing Locations in California") +
+  theme_minimal()
+
+```
+
+
