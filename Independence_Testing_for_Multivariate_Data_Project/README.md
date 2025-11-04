@@ -67,18 +67,9 @@ Use HSIC for high-dimensional or nonlinear relationships (e.g., marketing, genom
 
 Testing dependence between biological and demographic variables:
 
-𝑋
-=
-{
-lpsa, lcavol, lweight
-}
+
 X={lpsa, lcavol, lweight}
 
-𝑌
-=
-{
-age, lbph, lcp
-}
 Y={age, lbph, lcp}
 
 All four tests (DCOR, HSIC, SRC, MRC) rejected independence, showing strong relationships between cancer indicators and patient characteristics.
