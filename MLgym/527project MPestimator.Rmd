@@ -1,0 +1,201 @@
+---
+title: "527_project, M,P estimator"
+author: DICHUAN ZHENG
+subtitle: "NetID: dichuan2"
+date: "`r Sys.Date()`"
+output:
+  pdf_document:
+    latex_engine: xelatex
+    df_print: paged
+    toc: true
+    toc_depth: 2
+extra_dependencies:
+  - fontspec
+  - xcolor
+---
+
+```{r, echo=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r, echo=FALSE}
+gym_data <- read.csv("gym_data.csv")
+```
+# Why M and P estimators?
+M-estimator:
+Reduces the influence of large residuals by using robust loss functions, ensures that a few extreme outliers do not affect the model fit.
+P-estimator:
+
+Designed to be even more robust than M-estimators, especially for datasets with a high proportion of outliers. Using robust statistical principles to minimize the effect of large residuals
+# M-estimator
+
+## Definition
+
+An **M-estimator** minimizes a general loss function \( \rho \) instead of the sum of squared residuals used in ordinary least squares (OLS). It is defined as:
+
+\[
+\hat{\beta} = \arg\min_{\beta} \sum_{i=1}^n \rho(y_i - X_i \beta)
+\]
+
+where:
+- \( \rho(x) \) is a robust loss function (e.g., Huber loss, Tukey's biweight).
+- \( y_i \) is the response variable, \( X_i \) is the predictor variable(s), and \( \beta \) represents the model parameters.
+
+## Estimation Procedure
+
+The solution is typically found by solving the following first-order condition:
+
+\[
+\sum_{i=1}^n \psi(y_i - X_i \hat{\beta}) X_i = 0
+\]
+
+where:
+- \( \psi(x) = \frac{\partial \rho(x)}{\partial x} \) is the influence function that limits the impact of large residuals.
+
+### Common Loss Functions
+
+1. **Huber Loss**:
+   \[
+   \rho(x) =
+   \begin{cases}
+   \frac{1}{2}x^2, & \text{if } |x| \leq c \\
+   c|x| - \frac{1}{2}c^2, & \text{if } |x| > c
+   \end{cases}
+   \]
+
+2. **Tukey's Biweight**:
+   \[
+   \rho(x) =
+   \begin{cases}
+   c^2 \left(1 - \left(1 - \frac{x^2}{c^2}\right)^3\right), & \text{if } |x| \leq c \\
+   c^2, & \text{if } |x| > c
+   \end{cases}
+   \]
+
+---
+
+# P-estimator
+
+## Definition
+
+A **P-estimator** is designed to provide even higher robustness than M-estimators. It minimizes a robust scale estimate of residuals while controlling for outlier contamination. It is often used in combination with S-estimators to achieve a balance between robustness and efficiency.
+
+The P-estimator solves:
+
+\[
+\hat{\beta} = \arg\min_{\beta} \frac{1}{n} \sum_{i=1}^n w_i \cdot \rho(y_i - X_i \beta)
+\]
+
+where:
+- \( w_i \) are robustness weights that adaptively reduce the impact of outliers.
+
+## Key Characteristics
+
+1. P-estimators can handle a higher proportion of outliers than M-estimators.
+2. They are less efficient in clean datasets but more robust in contaminated ones.
+
+# Analysis the Dataset
+
+```{r, echo=FALSE}
+library(MASS)
+
+
+formula <- as.formula("Calories_Burned ~ Weight..kg. + Height..m. + Session_Duration..hours. + BMI")
+
+#M-estimator regression
+m_model <- rlm(Calories_Burned ~ ., data =gym_data , method = "M")
+
+summary(m_model)
+
+plot(gym_data$Calories_Burned, fitted(m_model), 
+     main = "M-estimator Regression",
+     xlab = "Observed Calories Burned", 
+     ylab = "Fitted Values")
+abline(a = 0, b = 1, col = "red", lwd = 2) 
+ 
+```
+
+```{r, echo=FALSE}
+#calculate mse of m model
+predicted <- fitted(m_model)
+mse_m <- mean((gym_data$Calories_Burned - predicted)^2)
+mse_m
+```
+
+```{r, echo=FALSE}
+library(robustbase)
+
+#P-estimator
+p_model <- lmrob(Calories_Burned ~ ., data = gym_data, method = "S")
+
+summary(p_model)
+
+plot(gym_data$Calories_Burned, fitted(p_model), 
+     main = "P-estimator Regression",
+     xlab = "Observed Calories Burned", 
+     ylab = "Fitted Values")
+abline(a = 0, b = 1, col = "blue", lwd = 2)
+```
+```{r, echo=FALSE}
+predicted <- fitted(p_model)
+mse_p <- mean((gym_data$Calories_Burned - predicted)^2)
+mse_p
+```
+
+```{r, echo=FALSE}
+cat("M-estimator Residual Standard Error:", sqrt(mean(residuals(m_model)^2)), "\n")
+cat("P-estimator Residual Standard Error:", sqrt(mean(residuals(p_model)^2)), "\n")
+
+# plot of residuals
+par(mfrow = c(1, 2))
+plot(residuals(m_model), main = "Residuals of M-estimator", ylab = "Residuals", xlab = "Index")
+abline(h = 0, col = "red", lty = 2)
+plot(residuals(p_model), main = "Residuals of P-estimator", ylab = "Residuals", xlab = "Index")
+abline(h = 0, col = "blue", lty = 2)
+
+```
+```{r, echo=FALSE}
+#compare AIC and BIC of M and P estimators
+calculate_aic_bic <- function(model, data, y) {
+  n <- nrow(data) 
+  k <- length(coefficients(model)) 
+  residuals <- y - fitted(model) 
+  rss <- sum(residuals^2) 
+  log_likelihood <- -n / 2 * (log(2 * pi) + log(rss / n) + 1) 
+  aic <- -2 * log_likelihood + 2 * k
+  bic <- -2 * log_likelihood + log(n) * k
+  return(c(AIC = aic, BIC = bic))
+}
+
+m_results <- calculate_aic_bic(m_model, gym_data, gym_data$Calories_Burned)
+
+p_results <- calculate_aic_bic(p_model, gym_data, gym_data$Calories_Burned)
+m_results
+p_results
+```
+
+Both AIC and BIC suggest that M model is better.
+
+```{r, echo=FALSE}
+#Diagnose of residuals
+# QQplot
+par(mfrow = c(1, 2))
+residuals_m <- residuals(m_model)
+residuals_p <- residuals(p_model)
+qqnorm(residuals_m, main = "QQ Plot - M-estimator")
+qqline(residuals_m, col = "red")
+
+qqnorm(residuals_p, main = "QQ Plot - P-estimator")
+qqline(residuals_p, col = "blue")
+
+# Shapiro-Wilk test for normal distribution of residuals
+shapiro.test(residuals_m)
+shapiro.test(residuals_p)
+
+```
+The result show the residuals of both M and P estimators are normally distributed.
+
+
+
+
+
