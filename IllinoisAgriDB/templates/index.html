@@ -1,0 +1,273 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Agricultural Data Dashboard</title>
+    <!-- Bootstrap CSS -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/css/bootstrap.min.css" rel="stylesheet">
+    <style>
+        body {
+            padding-top: 2rem;
+            background-color: #f8f9fa;
+        }
+        .result-container {
+            display: none;
+            margin-top: 2rem;
+            padding: 2rem;
+            background-color: white;
+            border-radius: 10px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+        }
+        .card {
+            margin-bottom: 1rem;
+            border: none;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+        }
+        .card-header {
+            background-color: #f1f8e9;
+            border-bottom: none;
+            font-weight: bold;
+        }
+        .loader {
+            display: none;
+            border: 5px solid #f3f3f3;
+            border-top: 5px solid #3498db;
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            animation: spin 2s linear infinite;
+            margin: 20px auto;
+        }
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        .error-message {
+            display: none;
+            margin-top: 2rem;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="row justify-content-center">
+            <div class="col-md-8">
+                <div class="card">
+                    <div class="card-header bg-success text-white">
+                        <h2 class="text-center mb-0">Agricultural Data Dashboard</h2>
+                    </div>
+                    <div class="card-body">
+                        <p class="lead text-center">Select parameters to view agricultural station data</p>
+                        
+                        <form id="regionForm" class="mb-4">
+                            <div class="mb-3">
+                                <label for="regionSelect" class="form-label">Region:</label>
+                                <select class="form-select" id="regionSelect" name="region" required>
+                                    <option value="">-- Select a Region --</option>
+                                    {% for region in regions %}
+                                    <option value="{{ region }}">{{ region }}</option>
+                                    {% endfor %}
+                                </select>
+                            </div>
+                            
+                            <div class="mb-3">
+                                <label for="cropSelect" class="form-label">Ideal Crop:</label>
+                                <select class="form-select" id="cropSelect" name="crop">
+                                    <option value="">-- Any Crop --</option>
+                                    {% for crop in crops %}
+                                    <option value="{{ crop }}">{{ crop }}</option>
+                                    {% endfor %}
+                                </select>
+                            </div>
+                            
+                            <div class="row mb-3">
+                                <div class="col-md-6">
+                                    <label for="startDate" class="form-label">Start Date:</label>
+                                    <input type="date" class="form-control" id="startDate" name="start_date" min="2017-01-01" max="2022-12-31">
+                                </div>
+                                <div class="col-md-6">
+                                    <label for="endDate" class="form-label">End Date:</label>
+                                    <input type="date" class="form-control" id="endDate" name="end_date" min="2017-01-01" max="2022-12-31">
+                                </div>
+                            </div>
+                            
+                            <div class="d-grid gap-2">
+                                <button type="submit" class="btn btn-primary">Get Station Data</button>
+                            </div>
+                        </form>
+                        
+                        <div class="loader" id="loader"></div>
+                        
+                        <div class="alert alert-danger error-message" id="errorMessage"></div>
+                        
+                        <div class="result-container" id="resultContainer">
+                            <div class="alert alert-success">
+                                <h4 class="alert-heading">Station Information</h4>
+                                <p><strong>Station Name:</strong> <span id="stationName"></span></p>
+                                <p><strong>Location:</strong> <span id="stationLocation"></span></p>
+                                <p id="cropInfo" style="display:none"><strong>Ideal Crop:</strong> <span id="idealCrop"></span></p>
+                            </div>
+                            
+                            <div class="row">
+                                <div class="col-md-6">
+                                    <div class="card">
+                                        <div class="card-header">
+                                            Weather Data
+                                        </div>
+                                        <div class="card-body" id="weatherData">
+                                            <!-- Weather data will be inserted here -->
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="col-md-6">
+                                    <div class="card">
+                                        <div class="card-header">
+                                            Soil Data
+                                        </div>
+                                        <div class="card-body" id="soilData">
+                                            <!-- Soil data will be inserted here -->
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- JavaScript -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        document.getElementById('regionForm').addEventListener('submit', function(event) {
+            event.preventDefault();
+            
+            const region = document.getElementById('regionSelect').value;
+            if (!region) {
+                document.getElementById('errorMessage').textContent = 'Please select a region';
+                document.getElementById('errorMessage').style.display = 'block';
+                return;
+            }
+            
+            // Check date range validity
+            const startDate = document.getElementById('startDate').value;
+            const endDate = document.getElementById('endDate').value;
+            
+            // Validate years are between 2017-2022
+            if (startDate) {
+                const startYear = new Date(startDate).getFullYear();
+                if (startYear < 2017 || startYear > 2022) {
+                    document.getElementById('errorMessage').textContent = 'Start date must be between 2017 and 2022';
+                    document.getElementById('errorMessage').style.display = 'block';
+                    return;
+                }
+            }
+            
+            if (endDate) {
+                const endYear = new Date(endDate).getFullYear();
+                if (endYear < 2017 || endYear > 2022) {
+                    document.getElementById('errorMessage').textContent = 'End date must be between 2017 and 2022';
+                    document.getElementById('errorMessage').style.display = 'block';
+                    return;
+                }
+            }
+            
+            // Check that end date is not before start date
+            if (startDate && endDate && new Date(endDate) < new Date(startDate)) {
+                document.getElementById('errorMessage').textContent = 'End date cannot be before start date';
+                document.getElementById('errorMessage').style.display = 'block';
+                return;
+            }
+            
+            // Hide any existing error message
+            document.getElementById('errorMessage').style.display = 'none';
+            
+            // Show loader
+            document.getElementById('loader').style.display = 'block';
+            document.getElementById('resultContainer').style.display = 'none';
+            
+            // Create form data
+            const formData = new FormData();
+            formData.append('region', region);
+            
+            // Add crop if selected
+            const crop = document.getElementById('cropSelect').value;
+            if (crop) {
+                formData.append('crop', crop);
+            }
+            
+            // Add date range if specified
+            if (startDate) {
+                formData.append('start_date', startDate);
+            }
+            if (endDate) {
+                formData.append('end_date', endDate);
+            }
+            
+            // Send AJAX request
+            fetch('/get_random_station', {
+                method: 'POST',
+                body: formData
+            })
+            .then(response => response.json())
+            .then(data => {
+                // Hide loader
+                document.getElementById('loader').style.display = 'none';
+                
+                if (data.error) {
+                    document.getElementById('errorMessage').textContent = data.error;
+                    document.getElementById('errorMessage').style.display = 'block';
+                    return;
+                }
+                
+                // Show result container
+                document.getElementById('resultContainer').style.display = 'block';
+                
+                // Update station info
+                document.getElementById('stationName').textContent = data.station.name;
+                document.getElementById('stationLocation').textContent = data.station.location;
+                
+                // Update crop info if provided
+                if (data.crop) {
+                    document.getElementById('idealCrop').textContent = data.crop;
+                    document.getElementById('cropInfo').style.display = 'block';
+                } else {
+                    document.getElementById('cropInfo').style.display = 'none';
+                }
+                
+                // Update weather data
+                const weatherDiv = document.getElementById('weatherData');
+                if (Object.keys(data.weather).length > 0) {
+                    weatherDiv.innerHTML = `
+                        <p><strong>Date:</strong> ${data.weather.date}</p>
+                        <p><strong>Average Temperature:</strong> ${data.weather.avg_temp} °C</p>
+                        <p><strong>Precipitation:</strong> ${data.weather.precipitation} mm</p>
+                    `;
+                } else {
+                    weatherDiv.innerHTML = '<p>No weather data available for this station.</p>';
+                }
+                
+                // Update soil data
+                const soilDiv = document.getElementById('soilData');
+                if (Object.keys(data.soil).length > 0) {
+                    soilDiv.innerHTML = `
+                        <p><strong>Date:</strong> ${data.soil.date}</p>
+                        <p><strong>Maximum Soil Temperature:</strong> ${data.soil.max_soil_temp} °C</p>
+                        <p><strong>Minimum Soil Temperature:</strong> ${data.soil.min_soil_temp} °C</p>
+                    `;
+                } else {
+                    soilDiv.innerHTML = '<p>No soil data available for this station.</p>';
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                document.getElementById('loader').style.display = 'none';
+                document.getElementById('errorMessage').textContent = 'Database connection error. Please try again later.';
+                document.getElementById('errorMessage').style.display = 'block';
+            });
+        });
+    </script>
+</body>
+</html> 
