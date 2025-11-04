@@ -1,0 +1,28 @@
+---
+title: "STAT428 Report"
+author: "Andrew Cao"
+date: "2024-12-11"
+geometry: "left=1cm,right=1cm,top=1cm,bottom=1cm"
+output: 
+  pdf_document:
+    latex_engine: xelatex
+---
+
+
+This aim of independence testing for Customer Purchase Records is to establish whether there exists any correlation between customers' purchase records and demographic and economic indicators that help the corporation tailor their marketing and sales strategies more efficiently.
+Overview of Tests Considered:
+
+Distance Correlation Test (DCOR) - Measures the strength of association between two sets of variables. 
+Hilbert-Schmidt Independence Criterion (HSIC) - Utilizes kernel functions to detect nonlinear associations. 
+Sum of Rank Correlations (SRC) - Utilizes rank-based correlations as an assessment method.
+Maxima of Rank Correlations (MRC) - Determines which pairs exhibit the strongest rank correlation.
+
+Recommendation:
+Retail companies looking to understand complex relationships between different customer characteristics and economic factors should use a tool called the Hilbert-Schmidt Independence Criterion (HSIC). This tool is particularly effective in situations where usual methods struggle to identify complex patterns.
+
+Why HSIC? 
+HSIC is a tool that excels at uncovering complex patterns in data that typical methods might miss, especially when these patterns are not straightforward. This makes it highly valuable when analyzing a wide range of customer characteristics and economic factors together. Not only is HSIC robust, meaning it performs well and gives reliable results across various situations, it is also computationally efficient. This means it provides deep insights without requiring a lot of computing power, making it a practical choice for businesses that handle large amounts of data but need to maintain efficiency.
+
+Winning over new customers requires understanding how customers from various backgrounds interact with products based on their background. Employing HSIC will help the organization make more informed business decisions.
+
+

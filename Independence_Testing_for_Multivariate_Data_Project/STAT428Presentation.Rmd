@@ -1,0 +1,53 @@
+---
+title: "STAT428Presentation"
+author: "Andrew Cao"
+date: "2024-12-12"
+output: beamer_presentation
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = FALSE)
+```
+
+## Algorithm 
+
+-Distance Correlation Test
+
+-Hilbert-Schmidt Independence Criterion Test
+
+-Sum of Rank Correlations Test
+
+-Maxima of Rank Correlations Test
+
+## How Do Testify The Most Optimized Method
+
+-Real Data Application
+
+-Choice of Tuning Parameter and Distance
+
+-Type I Error (False Alarm) Comparison
+
+
+## Real Data Comparison
+
+-DCOR: True
+-HSIC: True
+-SRC: True
+-MRC: True
+
+## Choice of Tuning Parameter and Distance
+
+-Choosing tuning parameters and distances in data analysis is like adjusting settings on a music equalizer or selecting the best route for a journey. These choices help tailor the analysis to accurately reflect the data’s nature, ensuring that insights derived are both relevant and precise for decision-making.
+
+-DCOR
+
+-HSIC
+
+## Type I Error (False Alarm) Comparison
+
+-DCOR is better for small data (Error 2%)
+
+-HSIC is better for large data (Error 0%)
+
+## Thank you!
+
